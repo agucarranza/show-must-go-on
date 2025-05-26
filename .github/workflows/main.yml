@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main # Cambia la rama si es necesario
-
+    paths:
+      - 'my-app/**'
 jobs:
   build:
     runs-on: ubuntu-latest
