@@ -5,7 +5,7 @@ on:
     branches:
       - main # Cambia la rama si es necesario
     paths:
-      - 'visa-rate/**'
+      - 'exchanges/**'
       
 jobs:
   build:
@@ -34,7 +34,7 @@ jobs:
       # Build the Docker image
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/visa-rate:${{ github.sha }} visa-rate
+          docker build -t ghcr.io/${{ github.repository }}/visa-rate:${{ github.sha }} exchanges
 
       # Push the Docker image to GitHub Container Registry
       - name: Push Docker image
