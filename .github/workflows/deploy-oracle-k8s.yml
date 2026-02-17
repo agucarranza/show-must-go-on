@@ -41,7 +41,7 @@ jobs:
           -L 127.0.0.100:16443:127.0.0.1:6443 \
           -fN \
           ubuntu@158.101.117.42
-          kubectl apply -f k8s/busybox.yml
+          kubectl apply -f infra/k8s/busybox.yml
           kubectl get pods busybox-pod -o wide
           kubectl describe pod busybox-pod
 
