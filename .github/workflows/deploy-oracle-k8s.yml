@@ -21,7 +21,7 @@ jobs:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
         with:
-          version: 'default'
+          version: 'v1.30.2'
 
       - name: add entry to /etc/hosts
         run: |
