@@ -19,7 +19,7 @@ jobs:
           chmod 600 $HOME/.kube/config
 
       - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
+        uses: azure/setup-kubectl@v4
         with:
           version: 'default'
 
