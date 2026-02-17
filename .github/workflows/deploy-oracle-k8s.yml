@@ -25,7 +25,7 @@ jobs:
 
       - name: add entry to /etc/hosts
         run: |
-          echo "127.0.0.100 kubernetes" >> /etc/hosts
+          echo "127.0.0.100 kubernetes" | sudo tee -a /etc/hosts
 
       - name: Set up SSH key
         run: |
