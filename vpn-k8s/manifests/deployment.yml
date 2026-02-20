@@ -16,11 +16,12 @@ spec:
         kubernetes.io/arch: arm64
       containers:
         - name: openvpn
-          image: openvpn/openvpn-as:latest
+          image: docker.io/thiagoyuiti/openvpn-arm64:latest
           ports:
             - containerPort: 1194
               protocol: UDP
           securityContext:
+            privileged: true
             capabilities:
               add:
                 - NET_ADMIN
@@ -33,7 +34,7 @@ spec:
               memory: "1Gi"
           volumeMounts:
             - name: openvpn-data
-              mountPath: /config
+              mountPath: /etc/openvpn
       volumes:
         - name: openvpn-data
           persistentVolumeClaim:

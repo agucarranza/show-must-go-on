@@ -26,93 +26,118 @@ NodePort del servicio OpenVPN: 30443 (UDP)
 
 ---
 
-## 1) Entrar al pod
+# OpenVPN en Kubernetes (ARM64) con Client-to-Client habilitado
+
+Estas instrucciones permiten:
+
+- Habilitar comunicación entre clientes VPN
+- Permitir salida a internet (NAT)
+- Usar NodePort público
+- Persistir configuración en PVC
+
+---
+
+## 🔹 1. Crear pod temporal para inicializar la configuración
 
 ```bash
-kubectl exec -it deploy/openvpn -- bash
+kubectl run openvpn-init \
+  --image=docker.io/thiagoyuiti/openvpn-arm64:latest \
+  --overrides='
+{
+  "spec": {
+    "nodeSelector": {"kubernetes.io/arch":"arm64"},
+    "containers": [{
+      "name":"openvpn",
+      "image":"docker.io/thiagoyuiti/openvpn-arm64:latest",
+      "command":["sleep","3600"],
+      "securityContext":{"privileged":true},
+      "volumeMounts":[{"name":"openvpn-data","mountPath":"/etc/openvpn"}]
+    }],
+    "volumes":[{"name":"openvpn-data","persistentVolumeClaim":{"claimName":"openvpn-pvc"}}]
+  }
+}' --restart=Never
+```
+
+Entrar al pod:
+
+```bash
+kubectl exec -it openvpn-init -- bash
 ```
 
 ---
 
-## 2) Generar configuración del servidor
+## 🔹 2. (Opcional) Limpiar configuración previa
 
-(Reemplazar NODE_PUBLIC_IP por la IP pública real del nodo)
+⚠️ Solo si no hay clientes creados aún:
 
 ```bash
-ovpn_genconfig -u udp://NODE_PUBLIC_IP:30443
+rm -rf /etc/openvpn/*
+```
+
+---
+
+## 🔹 3. Generar configuración con Client-to-Client + NAT
+
+Reemplazar la IP por la IP pública del nodo.
+
+Si usás NodePort 30443:
+
+```bash
+ovpn_genconfig -u udp://158.101.117.42:30443 -d -c -s 10.8.0.0/24
+```
+
+Parámetros usados:
+
+- `-N` → Habilita NAT para salida a internet (no queremos que redirija el tráfico)
+- `-d` → Disable default route (no redirect-gateway)
+- `-c` → Permite comunicación entre clientes VPN
+- `-s` → Define subred VPN
+
+---
+
+## 🔹 4. Inicializar PKI
+
+```bash
 ovpn_initpki
 ```
 
-(Aceptar y definir passphrase para la CA)
+Escribir:
 
----
-
-## 3) Habilitar comunicación cliente-cliente
-
-```bash
-echo "client-to-client" >> /etc/openvpn/openvpn.conf
 ```
-
-Verificar:
-
-```bash
-grep client-to-client /etc/openvpn/openvpn.conf
+yes
 ```
 
 ---
 
-## 4) Crear usuarios
+## 🔹 5. Crear clientes
 
 ```bash
-easyrsa build-client-full cami nopass
-easyrsa build-client-full agus nopass
+easyrsa build-client-full client1 nopass
+easyrsa build-client-full client2 nopass
+```
+
+Exportar configuraciones:
+
+```bash
+ovpn_getclient client1 > client1.ovpn
+ovpn_getclient client2 > client2.ovpn
+```
+
+Salir:
+
+```bash
+exit
+```
+
+Eliminar pod temporal:
+
+```bash
+kubectl delete pod openvpn-init
 ```
 
 ---
 
-## 5) Configurar IPs estáticas (CCD)
-
-```bash
-mkdir -p /etc/openvpn/ccd
-```
-
-```bash
-echo "client-config-dir /etc/openvpn/ccd" >> /etc/openvpn/openvpn.conf
-```
-
-### cami
-
-```bash
-cat <<EOF > /etc/openvpn/ccd/cami
-ifconfig-push 10.8.0.10 255.255.255.0
-EOF
-```
-
-### agus
-
-```bash
-cat <<EOF > /etc/openvpn/ccd/agus
-ifconfig-push 10.8.0.20 255.255.255.0
-EOF
-```
-
----
-
-## 6) Verificar subnet del servidor
-
-Debe existir esta línea en /etc/openvpn/openvpn.conf:
-
-```bash
-server 10.8.0.0 255.255.255.0
-```
-
-Si no está, agregarla.
-
----
-
-## 7) Reiniciar deployment
-
-Salir del pod y ejecutar:
+## 🔹 6. Reiniciar Deployment
 
 ```bash
 kubectl rollout restart deployment openvpn
@@ -120,50 +145,36 @@ kubectl rollout restart deployment openvpn
 
 ---
 
-## 8) Exportar archivos de cliente
-
-Entrar nuevamente al pod:
+## 🔹 7. Verificar que client-to-client quedó activo
 
 ```bash
-kubectl exec -it deploy/openvpn -- bash
+kubectl exec -it openvpn -- grep client-to-client /etc/openvpn/openvpn.conf
 ```
 
-Generar archivos:
+Debe mostrar:
 
-```bash
-ovpn_getclient cami > /tmp/cami.ovpn
-ovpn_getclient agus > /tmp/agus.ovpn
 ```
-
-Salir del pod y copiar:
-
-```bash
-kubectl get pods
-kubectl cp default/<POD_NAME>:/tmp/cami.ovpn .
-kubectl cp default/<POD_NAME>:/tmp/agus.ovpn .
+client-to-client
 ```
 
 ---
 
-## 9) Verificar conexiones activas
+## 🔹 8. Prueba entre clientes
 
-Dentro del pod:
+Una vez conectados:
 
 ```bash
-cat /etc/openvpn/openvpn-status.log
+ping 10.8.0.X
 ```
+
+Donde `X` es la IP VPN del otro cliente.
 
 ---
 
-## Resultado esperado
+## ✅ Resultado esperado
 
-cami → 10.8.0.10
-agus → 10.8.0.20
-
-Podrán comunicarse entre sí dentro del túnel:
-
-10.8.0.10:7654
-10.8.0.20:7654
-
-El puerto 7654 NO se expone públicamente.
-Solo el NodePort 30443/UDP está expuesto.
+- Clientes se conectan por IP pública: `158.101.117.42:30443`
+- Obtienen IP dentro de `10.8.0.0/24`
+- Pueden comunicarse entre sí
+- Tienen salida a internet (si se usó `-N`)
+- Configuración persiste en PVC
