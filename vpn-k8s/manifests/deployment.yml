@@ -12,9 +12,11 @@ spec:
       labels:
         app: openvpn
     spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
       containers:
         - name: openvpn
-          image: kylemanna/openvpn
+          image: openvpn/openvpn-as:latest
           ports:
             - containerPort: 1194
               protocol: UDP
@@ -23,15 +25,15 @@ spec:
               add:
                 - NET_ADMIN
           resources:
-            limits:
-              memory: "128Mi"
-              cpu: "500m"
             requests:
-              memory: "64Mi"
-              cpu: "250m"
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
           volumeMounts:
             - name: openvpn-data
-              mountPath: /etc/openvpn
+              mountPath: /config
       volumes:
         - name: openvpn-data
           persistentVolumeClaim:
