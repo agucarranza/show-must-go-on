@@ -133,14 +133,14 @@ sudo mkdir -p /etc/apt/keyrings
 **Add Kubernetes GPG key:**
 
 ```bash
-curl -fsSL <https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key> | \
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | \
 sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 ```
 
 **Add Kubernetes repository:**
 
 ```bash
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] <https://pkgs.k8s.io/core:/stable:/v1.29/deb/> /" | \
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | \
 sudo tee /etc/apt/sources.list.d/kubernetes.list
 ```
 
@@ -210,6 +210,12 @@ Deploy the Calico network plugin:
 kubectl apply -f <https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml>
 ```
 
+### 11. Install Local Path Provisioner
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+```
+
 **Wait 1-2 minutes and check pod status:**
 
 ```bash
@@ -222,7 +228,7 @@ kubectl get pods -A
 
 ## Post-Installation Configuration
 
-### 11. Configure Single-Node Cluster (Common for Free Tier)
+### 12. Configure Single-Node Cluster (Common for Free Tier)
 
 Allow the control plane to schedule regular workload pods:
 
@@ -230,7 +236,7 @@ Allow the control plane to schedule regular workload pods:
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ```
 
-### 12. Verify Installation
+### 13. Verify Installation
 
 Check cluster status:
 
@@ -239,7 +245,7 @@ kubectl get nodes -o wide
 kubectl get pods -A
 ```
 
-### 13. Optional: Additional Free Tier Optimizations
+### 14. Optional: Additional Free Tier Optimizations
 
 Disable unnecessary services to conserve resources:
 
@@ -250,7 +256,7 @@ sudo systemctl disable ModemManager --now
 sudo systemctl disable rpcbind --now
 ```
 
-### 14. Installation Complete ✅
+### 15. Installation Complete ✅
 
 You now have a fully functional Kubernetes cluster on Oracle ARM Free Tier with:
 
@@ -259,7 +265,9 @@ You now have a fully functional Kubernetes cluster on Oracle ARM Free Tier with:
 - **Network Plugin**: Calico CNI
 - **Configuration**: Optimized for low resource consumption
 
-### 15. Adding Worker Nodes (Optional)
+### 16. Adding Worker Nodes (Optional)
+
+Initialize the worker with the same steps as the control plane, but skip the `kubeadm init` command.
 
 **On the control plane node**, generate a join command:
 
@@ -271,11 +279,11 @@ Execute the generated command on each worker node to join them to the cluster.
 
 ## Remote Access Configuration
 
-### 16. Configure kubectl on Local Machine for Remote Cluster Access
+### 17. Configure kubectl on Local Machine for Remote Cluster Access
 
 This section explains how to securely access your remote Kubernetes cluster from your local machine.
 
-#### 📌 Prerequisites
+#### Prerequisites
 
 - Kubernetes cluster running on a remote VM
 - SSH access to the VM
@@ -283,7 +291,7 @@ This section explains how to securely access your remote Kubernetes cluster from
 
 ---
 
-## ✅ Recommended Approach: SSH Tunnel (Secure)
+## Recommended Approach: SSH Tunnel (Secure)
 
 This method does **NOT** expose port 6443 to the internet, providing better security.
 
@@ -335,13 +343,14 @@ ssh oracle-k8s
 ssh -fN oracle-k8s
 ```
 
-> **Flags explained:**
->
-> - `-f` → Run in background
-> - `-N` → Don't execute remote shell
+**Flags explained:**
+
+- `-f` → Run in background
+- `-N` → Don't execute remote shell
 
 > [!WARNING]
-> Keep the SSH tunnel active while using kubectl. If running in background, the tunnel persists until manually terminated.
+>
+> **Keep the SSH tunnel active while using kubectl. If running in background, the tunnel persists until manually terminated.**
 
 ---
 
